@@ -55,7 +55,7 @@ func (helper *MqttHelper) HARegisterIncreasing(subtopic string, name string, uni
 	msg, _ := json.Marshal(payload)
 	// log.Printf("Should publish %s %s", topic, msg)
 	token := helper.client.Publish(topic, byte(qos), false, string(msg))
-	if token.WaitTimeout(1 * time.Second) {
+	if !token.WaitTimeout(1 * time.Second) {
 		log.Printf("PublishRetained failed err:%v", token.Error())
 	}
 }
@@ -74,7 +74,7 @@ func (helper *MqttHelper) HARegister(subtopic string, name string, unit string, 
 	msg, _ := json.Marshal(payload)
 	// log.Printf("Should publish %s %s", topic, msg)
 	token := helper.client.Publish(topic, byte(qos), false, string(msg))
-	if token.WaitTimeout(1 * time.Second) {
+	if !token.WaitTimeout(1 * time.Second) {
 		log.Printf("PublishRetained failed err:%v", token.Error())
 	}
 }

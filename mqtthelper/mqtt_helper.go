@@ -75,13 +75,12 @@ func (helper *MqttHelper) topic(subtopic string) string {
 
 func (helper *MqttHelper) onConnect(client MQTT.Client) {
 	log.Printf("Connect to %s", *broker)
-	token := client.Publish("envoy/connected", byte(qos), true, "online")
-	token.WaitTimeout(10 * time.Second)
+	helper.PublishRetained("connected","online")
 }
 
 func (helper *MqttHelper) PublishRetained(subtopic, message string) {
 	token := helper.client.Publish(helper.topic(subtopic), byte(qos), true, message)
-	if token.WaitTimeout(1 * time.Second) {
+	if !token.WaitTimeout(1 * time.Second) {
 		log.Printf("PublishRetained failed err:%v", token.Error())
 	}
 }
@@ -101,7 +100,7 @@ func (helper *MqttHelper) Publish(subtopic string, value any) {
 		message = fmt.Sprintf("%f", val)
 	}
 	token := helper.client.Publish(helper.topic(subtopic), byte(qos), false, message)
-	if token.WaitTimeout(1 * time.Second) {
+	if !token.WaitTimeout(1 * time.Second) {
 		log.Printf("Publish failed err:%v", token.Error())
 	}
 }
@@ -109,7 +108,7 @@ func (helper *MqttHelper) Publish(subtopic string, value any) {
 func (helper *MqttHelper) PublishJson(subtopic string, payload any) {
 	message, _ := json.Marshal(payload)
 	token := helper.client.Publish(helper.topic(subtopic), byte(qos), false, string(message))
-	if token.WaitTimeout(1 * time.Second) {
+	if !token.WaitTimeout(1 * time.Second) {
 		log.Printf("PublishJson failed err:%v", token.Error())
 	}
 }
