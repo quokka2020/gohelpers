@@ -15,31 +15,33 @@ import (
 )
 
 var qos = 0
-var broker = flag.String("broker", "tcp://192.168.10.4:1883", "The broker URI. ex: tcp://10.10.1.1:1883")
-var password = flag.String("mqttpassword", "", "The password (optional)")
-var user = flag.String("mqttuser", "", "The User (optional)")
-var cleansess = flag.Bool("clean", false, "Set Clean Session (default false)")
+var broker = flag.String("broker", util.GetEnv("MQTT_BROKER", "tcp://192.168.10.4:1883"), "The broker URI. ex: tcp://10.10.1.1:1883")
+var password = flag.String("password", util.GetEnv("MQTT_PASSWD", ""), "The password (optional)")
+var user = flag.String("user", util.GetEnv("MQTT_USER", ""), "The User (optional)")
+var id = flag.String("id", util.GetEnv("MQTT_ID", mqtt_id()), "The ClientID (optional)")
+var clean_session = flag.Bool("clean", util.GetEnvBool("MQTT_CLEAN", false), "Clean Session")
 
-type MqttHelper struct {
+func mqtt_id() string {
+	filename := filepath.Base(os.Args[0])
+	return fmt.Sprintf("%s-%s", filename, util.GetEnv("HOSTNAME", "localhost"))
+}
+
+type Mqtt_Helper struct {
 	client MQTT.Client
 	Prefix string // also the name
 }
 
-func CreateMqttHelper(prefix string) *MqttHelper {
-	helper := MqttHelper{
+func CreateMqttHelper(prefix string) *Mqtt_Helper {
+	helper := Mqtt_Helper{
 		Prefix: prefix,
-	}
-	id := fmt.Sprintf("%s-%s", filepath.Base(os.Args[0]), util.GetEnv("HOSTNAME", "localhost"))
-	if util.Verbose() {
-		log.Printf("myname==id %s", id)
 	}
 
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(*broker)
-	opts.SetClientID(id)
+	opts.SetClientID(*id)
 	opts.SetUsername(*user)
 	opts.SetPassword(*password)
-	opts.SetCleanSession(*cleansess)
+	opts.SetCleanSession(*clean_session)
 	opts.SetAutoReconnect(true)
 	opts.SetConnectRetry(true)
 	opts.SetConnectTimeout(10 * time.Second)
@@ -62,30 +64,26 @@ func CreateMqttHelper(prefix string) *MqttHelper {
 		log.Fatal(token.Error())
 	}
 
-	// announce to HomeAssistant
-
-	// registerConfig(client)
-
 	return &helper
 }
 
-func (helper *MqttHelper) topic(subtopic string) string {
+func (helper *Mqtt_Helper) topic(subtopic string) string {
 	return fmt.Sprintf("%s/%s", helper.Prefix, subtopic)
 }
 
-func (helper *MqttHelper) onConnect(client MQTT.Client) {
+func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 	log.Printf("Connect to %s", *broker)
-	helper.PublishRetained("connected","online")
+	helper.PublishRetained("connected", "online")
 }
 
-func (helper *MqttHelper) PublishRetained(subtopic, message string) {
+func (helper *Mqtt_Helper) PublishRetained(subtopic, message string) {
 	token := helper.client.Publish(helper.topic(subtopic), byte(qos), true, message)
 	if !token.WaitTimeout(1 * time.Second) {
 		log.Printf("PublishRetained failed err:%v", token.Error())
 	}
 }
 
-func (helper *MqttHelper) Publish(subtopic string, value any) {
+func (helper *Mqtt_Helper) Publish(subtopic string, value any) {
 	var message string
 	switch val := value.(type) {
 	case string:
@@ -99,13 +97,17 @@ func (helper *MqttHelper) Publish(subtopic string, value any) {
 	case float64:
 		message = fmt.Sprintf("%f", val)
 	}
-	token := helper.client.Publish(helper.topic(subtopic), byte(qos), false, message)
+	topic := helper.topic(subtopic)
+	if util.Verbose() {
+		log.Printf("mqtt publish token:%s message:%s", topic, message)
+	}
+	token := helper.client.Publish(topic, byte(qos), false, message)
 	if !token.WaitTimeout(1 * time.Second) {
 		log.Printf("Publish failed err:%v", token.Error())
 	}
 }
 
-func (helper *MqttHelper) PublishJson(subtopic string, payload any) {
+func (helper *Mqtt_Helper) PublishJson(subtopic string, payload any) {
 	message, _ := json.Marshal(payload)
 	token := helper.client.Publish(helper.topic(subtopic), byte(qos), false, string(message))
 	if !token.WaitTimeout(1 * time.Second) {

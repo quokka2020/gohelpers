@@ -28,7 +28,7 @@ type ha_config struct {
 	Icon               string    `json:"icon,omitempty"`
 }
 
-func (helper *MqttHelper) base_ha_config() ha_config {
+func (helper *Mqtt_Helper) base_ha_config() ha_config {
 	return ha_config{
 		Availability_Topic: helper.topic("connected"),
 		Device: ha_device{
@@ -40,7 +40,7 @@ func (helper *MqttHelper) base_ha_config() ha_config {
 	}
 }
 
-func (helper *MqttHelper) HARegisterIncreasing(subtopic string, name string, unit string, device_class string, icon string) {
+func (helper *Mqtt_Helper) HARegisterIncreasing(subtopic string, name string, unit string, device_class string, icon string) {
 	state_topic := helper.topic(subtopic)
 	topic := fmt.Sprintf("homeassistant/sensor/%s/config", state_topic)
 	payload := helper.base_ha_config()
@@ -60,7 +60,7 @@ func (helper *MqttHelper) HARegisterIncreasing(subtopic string, name string, uni
 	}
 }
 
-func (helper *MqttHelper) HARegister(subtopic string, name string, unit string, device_class string, icon string) {
+func (helper *Mqtt_Helper) HARegister(subtopic string, name string, unit string, device_class string, icon string) {
 	state_topic := helper.topic(subtopic)
 	topic := fmt.Sprintf("homeassistant/sensor/%s/config", state_topic)
 	payload := helper.base_ha_config()
