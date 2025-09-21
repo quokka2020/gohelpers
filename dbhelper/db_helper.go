@@ -35,13 +35,12 @@ func CreateDbHelper(prefix string) *Db_Helper {
 	return &helper
 }
 
-func (helper *Db_Helper) SingleQuery(sql func(db *pgxpool.Pool) error) (error) {
+func (helper *Db_Helper) SingleQuery(sql func(ctx context.Context, db *pgxpool.Pool) error) (error) {
 	ctx := context.Background()
 	db, err := pgxpool.ConnectConfig(ctx, helper.pool_config)
 	if err != nil {
 		log.Printf("Unable to create connection pool %v", err)
 		return fmt.Errorf("unable to create connection pool %v", err)
-		// os.Exit(1)
 	}
 	defer db.Close()
 
@@ -51,5 +50,5 @@ func (helper *Db_Helper) SingleQuery(sql func(db *pgxpool.Pool) error) (error) {
 		return fmt.Errorf("failed to set timezone to UTC err:%v",err)
 	}
 
-	return sql(db)
+	return sql(ctx, db)
 }
