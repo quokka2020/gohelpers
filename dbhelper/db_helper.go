@@ -23,7 +23,7 @@ type Db_Helper struct {
 	pool_config *pgxpool.Config
 }
 
-func CreateDbHelper(prefix string) *Db_Helper {
+func CreateDbHelper() *Db_Helper {
 	var err error
 	helper := Db_Helper{}
 	pgconfig := fmt.Sprintf("host=%s database=%s user=%s password=%s", *dbhost, *dbname, *dbuser, *dbpassword)
