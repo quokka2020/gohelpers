@@ -31,7 +31,7 @@ type Mqtt_Helper struct {
 	Prefix string // also the name
 }
 
-func CreateMqttHelper(prefix string) (*Mqtt_Helper,error) {
+func CreateMqttHelper(prefix string) (*Mqtt_Helper, error) {
 	helper := Mqtt_Helper{
 		Prefix: prefix,
 	}
@@ -61,10 +61,10 @@ func CreateMqttHelper(prefix string) (*Mqtt_Helper,error) {
 
 	helper.client = MQTT.NewClient(opts)
 	if token := helper.client.Connect(); token.Wait() && token.Error() != nil {
-		return nil,token.Error()
+		return nil, token.Error()
 	}
 
-	return &helper,nil
+	return &helper, nil
 }
 
 func (helper *Mqtt_Helper) Close() {
@@ -88,6 +88,7 @@ func (helper *Mqtt_Helper) PublishRetained(subtopic, message string) {
 }
 
 func (helper *Mqtt_Helper) Publish(subtopic string, value any) {
+	topic := helper.topic(subtopic)
 	var message string
 	switch val := value.(type) {
 	case string:
@@ -100,8 +101,16 @@ func (helper *Mqtt_Helper) Publish(subtopic string, value any) {
 		message = fmt.Sprintf("%f", val)
 	case float64:
 		message = fmt.Sprintf("%f", val)
+	case bool:
+		if val {
+			message = "1"
+		} else {
+			message = "0"
+		}
+	default:
+		log.Printf("Type not implemented for topic %s",topic)
+		message = fmt.Sprintf("%v", value)
 	}
-	topic := helper.topic(subtopic)
 	if util.Verbose() {
 		log.Printf("mqtt publish token:%s message:%s", topic, message)
 	}
