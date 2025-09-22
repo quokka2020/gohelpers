@@ -31,7 +31,7 @@ type Mqtt_Helper struct {
 	Prefix string // also the name
 }
 
-func CreateMqttHelper(prefix string) *Mqtt_Helper {
+func CreateMqttHelper(prefix string) (*Mqtt_Helper,error) {
 	helper := Mqtt_Helper{
 		Prefix: prefix,
 	}
@@ -61,10 +61,14 @@ func CreateMqttHelper(prefix string) *Mqtt_Helper {
 
 	helper.client = MQTT.NewClient(opts)
 	if token := helper.client.Connect(); token.Wait() && token.Error() != nil {
-		log.Fatal(token.Error())
+		return nil,token.Error()
 	}
 
-	return &helper
+	return &helper,nil
+}
+
+func (helper *Mqtt_Helper) Close() {
+	helper.client.Disconnect(250)
 }
 
 func (helper *Mqtt_Helper) topic(subtopic string) string {
