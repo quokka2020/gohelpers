@@ -2,7 +2,6 @@ package mqtthelper
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -15,11 +14,11 @@ import (
 )
 
 var qos = 0
-var broker = flag.String("broker", util.GetEnv("MQTT_BROKER", "tcp://192.168.10.4:1883"), "The broker URI. ex: tcp://10.10.1.1:1883")
-var password = flag.String("password", util.GetEnv("MQTT_PASSWD", ""), "The password (optional)")
-var user = flag.String("user", util.GetEnv("MQTT_USER", ""), "The User (optional)")
-var id = flag.String("id", util.GetEnv("MQTT_ID", mqtt_id()), "The ClientID (optional)")
-var clean_session = flag.Bool("clean", util.GetEnvBool("MQTT_CLEAN", false), "Clean Session")
+var broker = util.GetEnv("MQTT_BROKER", "tcp://192.168.10.4:1883")
+var password = util.GetEnv("MQTT_PASSWD", "")
+var user = util.GetEnv("MQTT_USER", "")
+var id = util.GetEnv("MQTT_ID", mqtt_id())
+var clean_session = util.GetEnvBool("MQTT_CLEAN", false)
 
 func mqtt_id() string {
 	filename := filepath.Base(os.Args[0])
@@ -37,11 +36,11 @@ func CreateMqttHelper(prefix string) (*Mqtt_Helper, error) {
 	}
 
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker(*broker)
-	opts.SetClientID(*id)
-	opts.SetUsername(*user)
-	opts.SetPassword(*password)
-	opts.SetCleanSession(*clean_session)
+	opts.AddBroker(broker)
+	opts.SetClientID(id)
+	opts.SetUsername(user)
+	opts.SetPassword(password)
+	opts.SetCleanSession(clean_session)
 	opts.SetAutoReconnect(true)
 	opts.SetConnectRetry(true)
 	opts.SetConnectTimeout(10 * time.Second)
@@ -76,7 +75,7 @@ func (helper *Mqtt_Helper) topic(subtopic string) string {
 }
 
 func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
-	log.Printf("Connect to %s", *broker)
+	log.Printf("Connect to %s", broker)
 	helper.PublishRetained("connected", "online")
 }
 
