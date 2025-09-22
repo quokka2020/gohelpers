@@ -94,7 +94,23 @@ func (helper *Mqtt_Helper) Publish(subtopic string, value any) {
 		message = val
 	case int:
 		message = fmt.Sprintf("%d", val)
+	case int8:
+		message = fmt.Sprintf("%d", val)
+	case int16:
+		message = fmt.Sprintf("%d", val)
+	case int32:
+		message = fmt.Sprintf("%d", val)
+	case int64:
+		message = fmt.Sprintf("%d", val)
 	case uint:
+		message = fmt.Sprintf("%d", val)
+	case uint8:
+		message = fmt.Sprintf("%d", val)
+	case uint16:
+		message = fmt.Sprintf("%d", val)
+	case uint32:
+		message = fmt.Sprintf("%d", val)
+	case uint64:
 		message = fmt.Sprintf("%d", val)
 	case float32:
 		message = fmt.Sprintf("%f", val)
