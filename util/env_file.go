@@ -31,8 +31,11 @@ func Env_Filename() string {
 func (f *EnvFile) init() {
 	if !f.initialized {
 		if f.FileName == "" {
-			f.initialized = true
-			return
+			if *env_filename == "" {
+				f.initialized = true
+				return
+			}
+			f.FileName = *env_filename
 		}
 		var err error
 		f.Content, err = godotenv.Read(f.FileName)
