@@ -19,33 +19,6 @@ func NotEmpty(s string) bool {
 	return len(s) > 0
 }
 
-// Get env var or default
-func GetEnv(key string, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
-}
-
-// Get env var or default
-func GetEnvInt(key string, fallback int) int {
-	if value, ok := os.LookupEnv(key); ok {
-		i, err := strconv.Atoi(value)
-		if err == nil {
-			return i
-		}
-	}
-	return fallback
-}
-
-// Get env var or default
-func GetEnvBool(key string, fallback bool) bool {
-	if value, ok := os.LookupEnv(key); ok {
-		return strings.ToLower(value) == "true"
-	}
-	return fallback
-}
-
 func Contains(s []string, str string) bool {
 	for /*nr*/ _, v := range s {
 		if v == str {
