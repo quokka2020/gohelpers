@@ -19,7 +19,7 @@ type EnvFile struct {
 }
 
 var env_file *EnvFile = &EnvFile{
-	FileName: *env_filename,
+	FileName: "",
 	initialized: false,
 	Content: map[string]string{},
 }
@@ -30,9 +30,13 @@ func Env_Filename() string {
 
 func (f *EnvFile) init() {
 	if !f.initialized {
+		if !flag.Parsed() {
+			log.Printf("flags not parsed")
+			flag.Parse()
+		}
 		log.Printf("Not initialized")
 		if f.FileName == "" {
-			log.Printf("Filename empty")
+			log.Printf("Filename empty [%s]",*env_filename)
 			if *env_filename == "" {
 				f.initialized = true
 				return
