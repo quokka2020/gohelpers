@@ -30,11 +30,14 @@ func Env_Filename() string {
 
 func (f *EnvFile) init() {
 	if !f.initialized {
+		log.Printf("Not initialized")
 		if f.FileName == "" {
+			log.Printf("Filename empty")
 			if *env_filename == "" {
 				f.initialized = true
 				return
 			}
+			log.Printf("Change Filename to [%s]",*env_filename)
 			f.FileName = *env_filename
 		}
 		var err error
@@ -50,6 +53,8 @@ func (f *EnvFile) init() {
 func (f *EnvFile) Get(key string) (string, bool) {
 	f.init()
 	val, found := f.Content[key]
+	log.Printf("Read from env-file [%s]=[%s] %t", key,val,found)
+
 	return val, found
 }
 
@@ -60,11 +65,14 @@ func GetEnvFile() (string, bool) {
 // Get env var or default
 func GetEnv(key string, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
+		log.Printf("Read env [%s]=[%s]", key,value)
 		return value
 	}
 	if value, ok := env_file.Get(key); ok {
+		log.Printf("Read env-file [%s]=[%s]", key,value)
 		return value
 	}
+	log.Printf("Read fallback [%s]=[%s]", key,fallback)
 	return fallback
 }
 
