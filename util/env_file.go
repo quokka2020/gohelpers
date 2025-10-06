@@ -57,8 +57,7 @@ func (f *EnvFile) init() {
 func (f *EnvFile) Get(key string) (string, bool) {
 	f.init()
 	val, found := f.Content[key]
-	log.Printf("Read from env-file [%s]=[%s] %t", key,val,found)
-
+	// log.Printf("Read from env-file [%s]=[%s] %t", key,val,found)
 	return val, found
 }
 
