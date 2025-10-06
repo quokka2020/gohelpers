@@ -9,11 +9,6 @@ import (
 	"github.com/quokka2020/gohelpers/util"
 )
 
-var dbhost = util.GetEnv("DB_HOST", "192.168.10.4")
-var dbname = util.GetEnv("DB_NAME", "")
-var dbuser = util.GetEnv("DB_USER", "")
-var dbpassword = util.GetEnv("DB_PASS", "")
-
 type Db_Helper struct {
 	pool_config *pgxpool.Config
 }
@@ -21,7 +16,7 @@ type Db_Helper struct {
 func CreateDbHelper() *Db_Helper {
 	var err error
 	helper := Db_Helper{}
-	pgconfig := fmt.Sprintf("host=%s database=%s user=%s password=%s", dbhost, dbname, dbuser, dbpassword)
+	pgconfig := fmt.Sprintf("host=%s database=%s user=%s password=%s", util.GetEnv("DB_HOST", "192.168.10.4"), util.GetEnv("DB_NAME", ""), util.GetEnv("DB_USER", ""), util.GetEnv("DB_PASS", ""))
 	helper.pool_config, err = pgxpool.ParseConfig(pgconfig)
 	if err != nil {
 		log.Panicf("Unable to parse DATABASE_URL:[%s] %v", pgconfig, err)
@@ -30,7 +25,7 @@ func CreateDbHelper() *Db_Helper {
 	return &helper
 }
 
-func (helper *Db_Helper) SingleQuery(sql func(ctx context.Context, db *pgxpool.Pool) error) (error) {
+func (helper *Db_Helper) SingleQuery(sql func(ctx context.Context, db *pgxpool.Pool) error) error {
 	ctx := context.Background()
 	db, err := pgxpool.ConnectConfig(ctx, helper.pool_config)
 	if err != nil {
@@ -41,8 +36,8 @@ func (helper *Db_Helper) SingleQuery(sql func(ctx context.Context, db *pgxpool.P
 
 	_, err = db.Exec(ctx, "set timezone = 'UTC'")
 	if err != nil {
-		log.Printf("failed to set timezone to UTC err:%v",err)
-		return fmt.Errorf("failed to set timezone to UTC err:%v",err)
+		log.Printf("failed to set timezone to UTC err:%v", err)
+		return fmt.Errorf("failed to set timezone to UTC err:%v", err)
 	}
 
 	return sql(ctx, db)
