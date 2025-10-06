@@ -10,7 +10,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var env_filename = flag.String("env-file", "", "The environment-file to load")
+var env_filename = flag.String("envfile", "", "The environment-file to load")
 
 type EnvFile struct {
 	initialized bool
