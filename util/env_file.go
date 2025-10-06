@@ -32,7 +32,7 @@ func (f *EnvFile) init() {
 	if !f.initialized {
 		if !flag.Parsed() {
 			log.Printf("flags not parsed")
-			flag.Parse()
+			return
 		}
 		log.Printf("Not initialized")
 		if f.FileName == "" {
