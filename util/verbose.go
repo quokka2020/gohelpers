@@ -13,7 +13,8 @@ func Verbose() bool {
 		if *verbose_flag {
 			*verbose = *verbose_flag
 		} else if env_file.initialized  {
-			*verbose = GetEnvBool("VERBOSE",false)
+			val := GetEnvBool("VERBOSE",false)
+			verbose = &val
 		} else {
 			return false
 		}
