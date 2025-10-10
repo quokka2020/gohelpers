@@ -11,7 +11,7 @@ var verbose *bool = nil
 func Verbose() bool {
 	if verbose == nil {
 		if *verbose_flag {
-			*verbose = *verbose_flag
+			verbose = verbose_flag
 		} else if env_file.initialized  {
 			val := GetEnvBool("VERBOSE",false)
 			verbose = &val
