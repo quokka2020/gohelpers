@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/joho/godotenv"
 )
@@ -13,6 +14,7 @@ import (
 var env_filename = flag.String("envfile", "", "The environment-file to load")
 
 type EnvFile struct {
+	sync.Mutex
 	initialized bool
 	FileName    string
 	Content     map[string]string
@@ -29,6 +31,8 @@ func Env_Filename() string {
 }
 
 func (f *EnvFile) init() {
+	f.Lock()
+	defer f.Unlock()
 	if !f.initialized {
 		if !flag.Parsed() {
 			log.Printf("flags not parsed")
