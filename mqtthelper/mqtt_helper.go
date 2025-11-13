@@ -18,7 +18,8 @@ var broker = util.GetEnv("MQTT_BROKER", "tcp://192.168.10.4:1883")
 var password = util.GetEnv("MQTT_PASSWD", "")
 var user = util.GetEnv("MQTT_USER", "")
 var id = util.GetEnv("MQTT_ID", mqtt_id())
-var clean_session = util.GetEnvBool("MQTT_CLEAN", false)
+// When the cleanSession flag is set to true, the client explicitly requests a non-persistent session.
+var clean_session = util.GetEnvBool("MQTT_CLEAN", true)
 
 func mqtt_id() string {
 	filename := filepath.Base(os.Args[0])

@@ -30,6 +30,10 @@ func Env_Filename() string {
 	return *env_filename
 }
 
+func PrepareEnvironment() {
+	flag.Parse()
+}
+
 func (f *EnvFile) init() {
 	f.Lock()
 	defer f.Unlock()

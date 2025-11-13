@@ -23,6 +23,7 @@ type ha_config struct {
 	UnitOfMeasurement  string    `json:"unit_of_measurement"`
 	ValueTemplate      string    `json:"value_template,omitempty"`
 	UniqueId           string    `json:"unique_id"`
+	Default_Entity_Id  string    `json:"default_entity_id"`
 	StateClass         string    `json:"state_class,omitempty"`
 	DeviceClass        string    `json:"device_class"`
 	Icon               string    `json:"icon,omitempty"`
@@ -48,6 +49,7 @@ func (helper *Mqtt_Helper) HARegisterIncreasing(subtopic string, name string, un
 	payload.StateTopic = state_topic
 	payload.UnitOfMeasurement = unit
 	payload.UniqueId = name
+	payload.Default_Entity_Id = name
 	payload.StateClass = "total_increasing"
 	payload.DeviceClass = device_class
 	payload.Icon = icon
