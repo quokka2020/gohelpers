@@ -11,7 +11,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var env_filename = flag.String("envfile", "", "The environment-file to load")
+var _ = flag.String("envfile", "", "The environment-file to load")
 
 type EnvFile struct {
 	sync.Mutex
@@ -27,31 +27,33 @@ var env_file *EnvFile = &EnvFile{
 }
 
 func Env_Filename() string {
-	return *env_filename
-}
-
-func PrepareEnvironment() {
-	flag.Parse()
+	return env_file.FileName
 }
 
 func (f *EnvFile) init() {
 	f.Lock()
 	defer f.Unlock()
 	if !f.initialized {
-		if !flag.Parsed() {
-			log.Printf("flags not parsed")
+		var init_verbose = false
+		for i,arg := range os.Args {
+			if arg == "-envfile" {
+				if len(os.Args) > i+1 {
+					f.FileName=os.Args[i+1]
+				}
+			}
+		}
+		f.initialized = true
+
+		if f.FileName == "" {
+			if init_verbose {
+				log.Printf("No envfile used")
+			}
 			return
 		}
-		// log.Printf("Not initialized")
-		if f.FileName == "" {
-			// log.Printf("Filename empty [%s]",*env_filename)
-			if *env_filename == "" {
-				f.initialized = true
-				return
-			}
-			// log.Printf("Change Filename to [%s]",*env_filename)
-			f.FileName = *env_filename
+		if init_verbose {
+			log.Printf("Env Filename is [%s]",f.FileName)
 		}
+		
 		var err error
 		f.Content, err = godotenv.Read(f.FileName)
 		if err != nil {
