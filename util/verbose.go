@@ -2,22 +2,33 @@ package util
 
 import (
 	"flag"
+	"os"
+	"slices"
+	"strconv"
+	"strings"
 )
 
-var verbose_flag = flag.Bool("v",false,"Do verbose logging")
+var _ = flag.Bool("v", false, "Do verbose logging")
 
-var verbose *bool = nil
+var verbose int = -1
 
 func Verbose() bool {
-	if verbose == nil {
-		if *verbose_flag {
-			verbose = verbose_flag
-		} else if env_file.initialized  {
-			val := GetEnvBool("VERBOSE",false)
-			verbose = &val
-		} else {
-			return false
+	return VerboseLevel() > 0
+}
+
+func VerboseLevel() int {
+	if verbose == -1 {
+		verbose = 0
+		if slices.Contains(os.Args, "-v") {
+			verbose = 1
+			return verbose
+		}
+		value := GetEnv("VERBOSE", "false")
+		if strings.ToLower(value) == "true" {
+			verbose = 1
+		} else if i, err := strconv.Atoi(value); err == nil {
+			verbose = i
 		}
 	}
-	return *verbose
+	return verbose
 }
