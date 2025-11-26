@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
@@ -29,11 +30,15 @@ func mqtt_id() string {
 type Mqtt_Helper struct {
 	client MQTT.Client
 	Prefix string // also the name
+	numberMapping map[string]func(string,float64)
+	stringMapping map[string]func(string,string)
 }
 
-func CreateMqttHelper(prefix string) (*Mqtt_Helper, error) {
+func CreateMqttHelper(prefix string) (*Mqtt_Helper) {
 	helper := Mqtt_Helper{
 		Prefix: prefix,
+		numberMapping: make(map[string]func(string, float64)),
+		stringMapping: make(map[string]func(string, string)),
 	}
 
 	opts := MQTT.NewClientOptions()
@@ -51,7 +56,7 @@ func CreateMqttHelper(prefix string) (*Mqtt_Helper, error) {
 	})
 	opts.SetWill(
 		helper.topic("connected"),
-		"offline",
+		"0",
 		0,
 		true,
 	)
@@ -60,11 +65,17 @@ func CreateMqttHelper(prefix string) (*Mqtt_Helper, error) {
 	// opts.SetDefaultPublishHandler(data.msgReceived)
 
 	helper.client = MQTT.NewClient(opts)
-	if token := helper.client.Connect(); token.Wait() && token.Error() != nil {
-		return nil, token.Error()
-	}
+	go helper.client.Connect()
 
-	return &helper, nil
+	return &helper
+}
+
+func (helper *Mqtt_Helper) AddNumberSubscription(topic string, function func(string,float64)) {
+	helper.numberMapping[topic] = function
+}
+
+func (helper *Mqtt_Helper) AddStringSubscription(topic string, function func(string,string)) {
+	helper.stringMapping[topic] = function
 }
 
 func (helper *Mqtt_Helper) Close() {
@@ -77,7 +88,18 @@ func (helper *Mqtt_Helper) topic(subtopic string) string {
 
 func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 	log.Printf("Connect to %s", broker)
-	helper.PublishRetained("connected", "online")
+	helper.PublishRetained("connected", "1")
+		for topic := range helper.numberMapping {
+		if token := helper.client.Subscribe(topic, byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
+			log.Fatal(token.Error())
+		}
+	}
+	for topic := range helper.stringMapping {
+		if token := helper.client.Subscribe(topic, byte(0), helper.stringReceived); token.Wait() && token.Error() != nil {
+			log.Fatal(token.Error())
+		}
+	}
+
 }
 
 func (helper *Mqtt_Helper) PublishRetained(subtopic, message string) {
@@ -141,5 +163,34 @@ func (helper *Mqtt_Helper) PublishJson(subtopic string, payload any) {
 	token := helper.client.Publish(helper.topic(subtopic), byte(qos), false, string(message))
 	if !token.WaitTimeout(1 * time.Second) {
 		log.Printf("PublishJson failed err:%v", token.Error())
+	}
+}
+
+func (helper *Mqtt_Helper) numberReceived(client MQTT.Client, msg MQTT.Message) {
+	// if *VERBOSE {
+	// 	log.Printf("MQTT Number received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
+	// }
+
+	i,err := strconv.ParseFloat(string(msg.Payload()),64)
+	if err != nil {
+		log.Printf("Got a non-number from %s with payload [%s] %v", msg.Topic(), string(msg.Payload()), err)
+		return
+	}
+	if function, ok := helper.numberMapping[msg.Topic()]; ok {
+		function(msg.Topic(),i)
+	} else {
+		log.Printf("Got an unmapped number from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
+	}
+}
+
+func (helper *Mqtt_Helper) stringReceived(client MQTT.Client, msg MQTT.Message) {
+	// if *VERBOSE {
+	// 	log.Printf("MQTT String received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
+	// }
+
+	if function, ok := helper.stringMapping[msg.Topic()]; ok {
+		function(msg.Topic(),string(msg.Payload()))
+	} else {
+		log.Printf("Got an unmapped string from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
 	}
 }
