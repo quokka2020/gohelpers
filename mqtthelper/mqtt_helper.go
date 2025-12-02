@@ -72,16 +72,12 @@ func CreateMqttHelper(prefix string) (*Mqtt_Helper) {
 
 func (helper *Mqtt_Helper) AddNumberSubscription(topic string, function func(string,float64)) {
 	helper.numberMapping[topic] = function
-	if token := helper.client.Subscribe(topic, byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
-		log.Fatal(token.Error())
-	}
+	helper.client.Subscribe(topic, byte(0), helper.numberReceived)
 }
 
 func (helper *Mqtt_Helper) AddStringSubscription(topic string, function func(string,string)) {
 	helper.stringMapping[topic] = function
-	if token := helper.client.Subscribe(topic, byte(0), helper.stringReceived); token.Wait() && token.Error() != nil {
-		log.Fatal(token.Error())
-	}
+	helper.client.Subscribe(topic, byte(0), helper.stringReceived)
 }
 
 func (helper *Mqtt_Helper) Close() {
