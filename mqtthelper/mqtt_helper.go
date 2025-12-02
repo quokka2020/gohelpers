@@ -76,14 +76,12 @@ func (helper *Mqtt_Helper) GetClient() MQTT.Client {
 }
 
 func (helper *Mqtt_Helper) AddNumberSubscription(subtopic string, function func(string,float64)) {
-	topic:=helper.topic(subtopic)
-	helper.numberMapping[topic] = function
+	helper.numberMapping[subtopic] = function
 	helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived)
 }
 
 func (helper *Mqtt_Helper) AddStringSubscription(subtopic string, function func(string,string)) {
-	topic:=helper.topic(subtopic)
-	helper.stringMapping[topic] = function
+	helper.stringMapping[subtopic] = function
 	helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived)
 }
 
