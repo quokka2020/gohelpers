@@ -70,6 +70,10 @@ func CreateMqttHelper(prefix string) (*Mqtt_Helper) {
 	return &helper
 }
 
+func (helper *Mqtt_Helper) GetClient() MQTT.Client {
+	return helper.client
+}
+
 func (helper *Mqtt_Helper) AddNumberSubscription(topic string, function func(string,float64)) {
 	helper.numberMapping[topic] = function
 	helper.client.Subscribe(topic, byte(0), helper.numberReceived)
@@ -89,7 +93,7 @@ func (helper *Mqtt_Helper) topic(subtopic string) string {
 }
 
 func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
-	log.Printf("Connect to %s", broker)
+	log.Printf("Connected to %s", broker)
 	helper.PublishRetained("connected", "1")
 	for topic := range helper.numberMapping {
 		if token := helper.client.Subscribe(topic, byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
@@ -101,7 +105,6 @@ func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 			log.Fatal(token.Error())
 		}
 	}
-
 }
 
 func (helper *Mqtt_Helper) PublishRetained(subtopic, message string) {
