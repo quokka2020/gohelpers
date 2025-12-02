@@ -194,6 +194,7 @@ func (helper *Mqtt_Helper) numberReceived(client MQTT.Client, msg MQTT.Message) 
 	for subtopic,function := range helper.numberMapping {
 		if match(helper.Prefix, msg.Topic(),subtopic) {
 			function(helper.subtopic(msg.Topic()),i)
+			return
 		}
 	}
 	log.Printf("Got an unmapped number from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
@@ -207,6 +208,7 @@ func (helper *Mqtt_Helper) stringReceived(client MQTT.Client, msg MQTT.Message) 
 	for subtopic,function := range helper.stringMapping {
 		if match(helper.Prefix, msg.Topic(),subtopic) {
 			function(helper.subtopic(msg.Topic()),string(msg.Payload()))
+			return
 		}
 	}
 	log.Printf("Got an unmapped string from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
