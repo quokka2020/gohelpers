@@ -93,6 +93,15 @@ func (helper *Mqtt_Helper) topic(subtopic string) string {
 	return fmt.Sprintf("%s/%s", helper.Prefix, subtopic)
 }
 
+func (helper *Mqtt_Helper) subtopic(topic string) string {
+	prefix_len := len(helper.Prefix)
+	if prefix_len+1 > len(topic) {
+		return topic
+	} 
+	return topic[prefix_len+1:]
+}
+
+
 func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 	log.Printf("Connected to %s", broker)
 	helper.PublishRetained("connected", "1")
@@ -184,7 +193,7 @@ func (helper *Mqtt_Helper) numberReceived(client MQTT.Client, msg MQTT.Message) 
 	}
 	for subtopic,function := range helper.numberMapping {
 		if match(helper.Prefix, msg.Topic(),subtopic) {
-			function(msg.Topic(),i)
+			function(helper.subtopic(msg.Topic()),i)
 		}
 	}
 	log.Printf("Got an unmapped number from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
@@ -197,7 +206,7 @@ func (helper *Mqtt_Helper) stringReceived(client MQTT.Client, msg MQTT.Message) 
 
 	for subtopic,function := range helper.stringMapping {
 		if match(helper.Prefix, msg.Topic(),subtopic) {
-			function(msg.Topic(),string(msg.Payload()))
+			function(helper.subtopic(msg.Topic()),string(msg.Payload()))
 		}
 	}
 	log.Printf("Got an unmapped string from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
