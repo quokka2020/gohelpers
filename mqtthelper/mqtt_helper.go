@@ -32,8 +32,8 @@ type Mqtt_Helper struct {
 	client MQTT.Client
 	Prefix string // also the name
 	numberMapping map[string]func(string,float64)
-	stringMapping map[string]func(string,string)
 	numberMappingFull map[string]bool
+	stringMapping map[string]func(string,string)
 	stringMappingFull map[string]bool
 }
 
@@ -41,7 +41,9 @@ func CreateMqttHelper(prefix string) (*Mqtt_Helper) {
 	helper := Mqtt_Helper{
 		Prefix: prefix,
 		numberMapping: make(map[string]func(string, float64)),
+		numberMappingFull: make(map[string]bool),
 		stringMapping: make(map[string]func(string, string)),
+		stringMappingFull: make(map[string]bool),
 	}
 
 	opts := MQTT.NewClientOptions()
