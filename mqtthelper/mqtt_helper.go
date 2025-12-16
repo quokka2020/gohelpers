@@ -20,6 +20,7 @@ var broker = util.GetEnv("MQTT_BROKER", "tcp://192.168.10.4:1883")
 var password = util.GetEnv("MQTT_PASSWD", "")
 var user = util.GetEnv("MQTT_USER", "")
 var id = util.GetEnv("MQTT_ID", mqtt_id())
+
 // When the cleanSession flag is set to true, the client explicitly requests a non-persistent session.
 var clean_session = util.GetEnvBool("MQTT_CLEAN", true)
 
@@ -29,20 +30,20 @@ func mqtt_id() string {
 }
 
 type Mqtt_Helper struct {
-	client MQTT.Client
-	Prefix string // also the name
-	numberMapping map[string]func(string,float64)
+	client            MQTT.Client
+	Prefix            string // also the name
+	numberMapping     map[string]func(string, float64)
 	numberMappingFull map[string]bool
-	stringMapping map[string]func(string,string)
+	stringMapping     map[string]func(string, string)
 	stringMappingFull map[string]bool
 }
 
-func CreateMqttHelper(prefix string) (*Mqtt_Helper) {
+func CreateMqttHelper(prefix string) *Mqtt_Helper {
 	helper := Mqtt_Helper{
-		Prefix: prefix,
-		numberMapping: make(map[string]func(string, float64)),
+		Prefix:            prefix,
+		numberMapping:     make(map[string]func(string, float64)),
 		numberMappingFull: make(map[string]bool),
-		stringMapping: make(map[string]func(string, string)),
+		stringMapping:     make(map[string]func(string, string)),
 		stringMappingFull: make(map[string]bool),
 	}
 
@@ -79,25 +80,25 @@ func (helper *Mqtt_Helper) GetClient() MQTT.Client {
 	return helper.client
 }
 
-func (helper *Mqtt_Helper) AddNumberSubscription(subtopic string, function func(string,float64)) {
+func (helper *Mqtt_Helper) AddNumberSubscription(subtopic string, function func(string, float64)) {
 	helper.numberMapping[subtopic] = function
 	helper.numberMappingFull[subtopic] = false
 	helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived)
 }
 
-func (helper *Mqtt_Helper) AddStringSubscription(subtopic string, function func(string,string)) {
+func (helper *Mqtt_Helper) AddStringSubscription(subtopic string, function func(string, string)) {
 	helper.stringMapping[subtopic] = function
 	helper.stringMappingFull[subtopic] = false
 	helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived)
 }
 
-func (helper *Mqtt_Helper) AddNumberSubscriptionFull(subtopic string, function func(string,float64)) {
+func (helper *Mqtt_Helper) AddNumberSubscriptionFull(subtopic string, function func(string, float64)) {
 	helper.numberMapping[subtopic] = function
 	helper.numberMappingFull[subtopic] = true
 	helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived)
 }
 
-func (helper *Mqtt_Helper) AddStringSubscriptionFull(subtopic string, function func(string,string)) {
+func (helper *Mqtt_Helper) AddStringSubscriptionFull(subtopic string, function func(string, string)) {
 	helper.stringMapping[subtopic] = function
 	helper.stringMappingFull[subtopic] = true
 	helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived)
@@ -115,22 +116,33 @@ func (helper *Mqtt_Helper) subtopic(topic string) string {
 	prefix_len := len(helper.Prefix)
 	if prefix_len+1 > len(topic) {
 		return topic
-	} 
+	}
 	return topic[prefix_len+1:]
 }
-
 
 func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 	log.Printf("Connected to %s", broker)
 	helper.PublishRetained("connected", "1")
-	for subtopic := range helper.numberMapping {
-		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
-			log.Fatal(token.Error())
+	for key := range helper.numberMapping {
+		if helper.numberMappingFull[key] {
+			if token := helper.client.Subscribe(key, byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
+				log.Fatal(token.Error())
+			}
+		} else {
+			if token := helper.client.Subscribe(helper.topic(key), byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
+				log.Fatal(token.Error())
+			}
 		}
 	}
-	for subtopic := range helper.stringMapping {
-		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived); token.Wait() && token.Error() != nil {
-			log.Fatal(token.Error())
+	for key := range helper.stringMapping {
+		if helper.stringMappingFull[key] {
+			if token := helper.client.Subscribe(key, byte(0), helper.stringReceived); token.Wait() && token.Error() != nil {
+				log.Fatal(token.Error())
+			}
+		} else {
+			if token := helper.client.Subscribe(helper.topic(key), byte(0), helper.stringReceived); token.Wait() && token.Error() != nil {
+				log.Fatal(token.Error())
+			}
 		}
 	}
 }
@@ -143,7 +155,7 @@ func (helper *Mqtt_Helper) PublishFullRetained(topic, message string) {
 }
 
 func (helper *Mqtt_Helper) PublishRetained(subtopic, message string) {
-	helper.PublishFullRetained(helper.topic(subtopic),message)
+	helper.PublishFullRetained(helper.topic(subtopic), message)
 }
 
 func (helper *Mqtt_Helper) PublishFullTopic(topic string, value any) {
@@ -182,7 +194,7 @@ func (helper *Mqtt_Helper) PublishFullTopic(topic string, value any) {
 			message = "0"
 		}
 	default:
-		log.Printf("Type not implemented for topic %s",topic)
+		log.Printf("Type not implemented for topic %s", topic)
 		message = fmt.Sprintf("%v", value)
 	}
 	if util.Verbose() {
@@ -195,7 +207,7 @@ func (helper *Mqtt_Helper) PublishFullTopic(topic string, value any) {
 }
 
 func (helper *Mqtt_Helper) Publish(subtopic string, value any) {
-	helper.PublishFullTopic(helper.topic(subtopic),value)
+	helper.PublishFullTopic(helper.topic(subtopic), value)
 }
 
 func (helper *Mqtt_Helper) PublishFullJson(topic string, payload any) {
@@ -215,20 +227,20 @@ func (helper *Mqtt_Helper) numberReceived(client MQTT.Client, msg MQTT.Message) 
 	// 	log.Printf("MQTT Number received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
 	// }
 
-	i,err := strconv.ParseFloat(string(msg.Payload()),64)
+	i, err := strconv.ParseFloat(string(msg.Payload()), 64)
 	if err != nil {
 		log.Printf("Got a non-number from %s with payload [%s] %v", msg.Topic(), string(msg.Payload()), err)
 		return
 	}
-	for key,function := range helper.numberMapping {
+	for key, function := range helper.numberMapping {
 		if helper.numberMappingFull[key] {
-			if match(msg.Topic(),key) {
-				function(helper.subtopic(msg.Topic()),i)
+			if match(msg.Topic(), key) {
+				function(helper.subtopic(msg.Topic()), i)
 				return
 			}
 		} else {
-			if match(msg.Topic(),helper.topic(key)) {
-				function(helper.subtopic(msg.Topic()),i)
+			if match(msg.Topic(), helper.topic(key)) {
+				function(helper.subtopic(msg.Topic()), i)
 				return
 			}
 		}
@@ -240,15 +252,15 @@ func (helper *Mqtt_Helper) stringReceived(client MQTT.Client, msg MQTT.Message) 
 	// if *VERBOSE {
 	// 	log.Printf("MQTT String received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
 	// }
-	for key,function := range helper.stringMapping {
+	for key, function := range helper.stringMapping {
 		if helper.stringMappingFull[key] {
-			if match(msg.Topic(),key) {
-				function(helper.subtopic(msg.Topic()),string(msg.Payload()))
+			if match(msg.Topic(), key) {
+				function(helper.subtopic(msg.Topic()), string(msg.Payload()))
 				return
 			}
 		} else {
-			if match(msg.Topic(),helper.topic(key)) {
-				function(helper.subtopic(msg.Topic()),string(msg.Payload()))
+			if match(msg.Topic(), helper.topic(key)) {
+				function(helper.subtopic(msg.Topic()), string(msg.Payload()))
 				return
 			}
 		}
@@ -260,9 +272,9 @@ func match(topic, full_possible_match string) bool {
 	if topic == full_possible_match {
 		return true
 	}
-	topic_p := strings.Split(topic,"/")
-	match_p := strings.Split(full_possible_match,"/")
-	for nr,p := range match_p {
+	topic_p := strings.Split(topic, "/")
+	match_p := strings.Split(full_possible_match, "/")
+	for nr, p := range match_p {
 		if p == "+" {
 			continue
 		}
