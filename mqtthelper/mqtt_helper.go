@@ -96,7 +96,7 @@ func (helper *Mqtt_Helper) AddNumberSubscriptionFull(topic string, function func
 }
 
 func (helper *Mqtt_Helper) AddStringSubscriptionFull(topic string, function func(string, string)) {
-	helper.stringMapping[topic] = function
+	helper.stringMappingFull[topic] = function
 	helper.client.Subscribe(topic, byte(0), helper.stringReceivedFull)
 }
 
