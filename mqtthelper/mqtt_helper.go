@@ -121,22 +121,22 @@ func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 	helper.PublishRetained("connected", "1")
 	for subtopic := range helper.numberMapping {
 		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
-			log.Fatal(token.Error())
+			log.Printf("failed to subscribe to %s err: %v",subtopic, token.Error())
 		}
 	}
 	for subtopic := range helper.stringMapping {
 		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived); token.Wait() && token.Error() != nil {
-			log.Fatal(token.Error())
+			log.Printf("failed to subscribe to %s err: %v",subtopic, token.Error())
 		}
 	}
 	for topic := range helper.numberMappingFull {
 		if token := helper.client.Subscribe(topic, byte(0), helper.numberReceivedFull); token.Wait() && token.Error() != nil {
-			log.Fatal(token.Error())
+			log.Printf("failed to subscribe to %s err: %v",topic, token.Error())
 		}
 	}
 	for topic := range helper.stringMappingFull {
 		if token := helper.client.Subscribe(topic, byte(0), helper.stringReceivedFull); token.Wait() && token.Error() != nil {
-			log.Fatal(token.Error())
+			log.Printf("failed to subscribe to %s err: %v",topic, token.Error())
 		}
 	}
 }
