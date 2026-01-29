@@ -121,22 +121,22 @@ func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 	helper.PublishRetained("connected", "1")
 	for subtopic := range helper.numberMapping {
 		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
-			log.Printf("failed to subscribe to %s err: %v",subtopic, token.Error())
+			log.Printf("failed to subscribe to %s err: %v", subtopic, token.Error())
 		}
 	}
 	for subtopic := range helper.stringMapping {
 		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived); token.Wait() && token.Error() != nil {
-			log.Printf("failed to subscribe to %s err: %v",subtopic, token.Error())
+			log.Printf("failed to subscribe to %s err: %v", subtopic, token.Error())
 		}
 	}
 	for topic := range helper.numberMappingFull {
 		if token := helper.client.Subscribe(topic, byte(0), helper.numberReceivedFull); token.Wait() && token.Error() != nil {
-			log.Printf("failed to subscribe to %s err: %v",topic, token.Error())
+			log.Printf("failed to subscribe to %s err: %v", topic, token.Error())
 		}
 	}
 	for topic := range helper.stringMappingFull {
 		if token := helper.client.Subscribe(topic, byte(0), helper.stringReceivedFull); token.Wait() && token.Error() != nil {
-			log.Printf("failed to subscribe to %s err: %v",topic, token.Error())
+			log.Printf("failed to subscribe to %s err: %v", topic, token.Error())
 		}
 	}
 }
@@ -152,8 +152,11 @@ func (helper *Mqtt_Helper) PublishRetained(subtopic, message string) {
 	helper.PublishFullRetained(helper.topic(subtopic), message)
 }
 
-func (helper *Mqtt_Helper) PublishFullTopic(topic string, value any) {
+func ValueToMessage(value any) []byte {
 	var message string
+	if value == nil {
+		return nil
+	}
 	switch val := value.(type) {
 	case string:
 		message = val
@@ -188,11 +191,16 @@ func (helper *Mqtt_Helper) PublishFullTopic(topic string, value any) {
 			message = "0"
 		}
 	default:
-		log.Printf("Type not implemented for topic %s", topic)
+		log.Printf("Type not implemented for topic %v", value)
 		message = fmt.Sprintf("%v", value)
 	}
+	return []byte(message)
+}
+
+func (helper *Mqtt_Helper) PublishFull(topic string, value any) {
+	message := ValueToMessage(value)
 	if util.Verbose() {
-		log.Printf("mqtt publish token:%s message:%s", topic, message)
+		log.Printf("mqtt publish token:%s message:%s", topic, string(message))
 	}
 	token := helper.client.Publish(topic, byte(qos), false, message)
 	if !token.WaitTimeout(1 * time.Second) {
@@ -201,7 +209,7 @@ func (helper *Mqtt_Helper) PublishFullTopic(topic string, value any) {
 }
 
 func (helper *Mqtt_Helper) Publish(subtopic string, value any) {
-	helper.PublishFullTopic(helper.topic(subtopic), value)
+	helper.PublishFull(helper.topic(subtopic), value)
 }
 
 func (helper *Mqtt_Helper) PublishFullJson(topic string, payload any) {

@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/quokka2020/gohelpers/util"
 )
 
 type Db_Helper struct {
 	pool_config *pgxpool.Config
+}
+
+type db_session struct {
+	session_context context.Context
+	db_conn         *pgxpool.Pool
 }
 
 func CreateDbHelper() *Db_Helper {
@@ -25,20 +31,45 @@ func CreateDbHelper() *Db_Helper {
 	return &helper
 }
 
-func (helper *Db_Helper) SingleQuery(sql func(ctx context.Context, db *pgxpool.Pool) error) error {
-	ctx := context.Background()
-	db, err := pgxpool.ConnectConfig(ctx, helper.pool_config)
+// You have to defer a close
+func (helper *Db_Helper) CreateSession(ctx context.Context) (*db_session, error) {
+	var err error
+	session := db_session{
+		session_context: ctx,
+	}
+	session.db_conn, err = pgxpool.ConnectConfig(ctx, helper.pool_config)
 	if err != nil {
 		log.Printf("Unable to create connection pool %v", err)
-		return fmt.Errorf("unable to create connection pool %v", err)
+		return nil, fmt.Errorf("unable to create connection pool %v", err)
 	}
-	defer db.Close()
 
-	_, err = db.Exec(ctx, "set timezone = 'UTC'")
+	_, err = session.db_conn.Exec(ctx, "set timezone = 'UTC'")
 	if err != nil {
 		log.Printf("failed to set timezone to UTC err:%v", err)
-		return fmt.Errorf("failed to set timezone to UTC err:%v", err)
+		session.db_conn.Close()
+		return nil, fmt.Errorf("failed to set timezone to UTC err:%v", err)
 	}
+	return &session, nil
+}
 
-	return sql(ctx, db)
+func (helper *Db_Helper) SingleQuery(sql func(ctx context.Context, db *pgxpool.Pool) error) error {
+	ctx := context.Background()
+	session, err := helper.CreateSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	return session.Run(sql)
+}
+
+func (session *db_session) Run(sql func(ctx context.Context, db *pgxpool.Pool) error) error {
+	return sql(session.session_context, session.db_conn)
+}
+
+func (session *db_session) Exec(query string, args ...any) (pgconn.CommandTag, error) {
+	return session.db_conn.Exec(session.session_context, query, args)
+}
+
+func (session *db_session) Close() {
+	session.db_conn.Close()
 }
