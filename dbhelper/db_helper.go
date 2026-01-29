@@ -14,7 +14,7 @@ type Db_Helper struct {
 	pool_config *pgxpool.Config
 }
 
-type db_session struct {
+type Db_Session struct {
 	session_context context.Context
 	db_conn         *pgxpool.Pool
 }
@@ -32,9 +32,9 @@ func CreateDbHelper() *Db_Helper {
 }
 
 // You have to defer a close
-func (helper *Db_Helper) CreateSession(ctx context.Context) (*db_session, error) {
+func (helper *Db_Helper) CreateSession(ctx context.Context) (*Db_Session, error) {
 	var err error
-	session := db_session{
+	session := Db_Session{
 		session_context: ctx,
 	}
 	session.db_conn, err = pgxpool.ConnectConfig(ctx, helper.pool_config)
@@ -62,14 +62,14 @@ func (helper *Db_Helper) SingleQuery(sql func(ctx context.Context, db *pgxpool.P
 	return session.Run(sql)
 }
 
-func (session *db_session) Run(sql func(ctx context.Context, db *pgxpool.Pool) error) error {
+func (session *Db_Session) Run(sql func(ctx context.Context, db *pgxpool.Pool) error) error {
 	return sql(session.session_context, session.db_conn)
 }
 
-func (session *db_session) Exec(query string, args ...any) (pgconn.CommandTag, error) {
+func (session *Db_Session) Exec(query string, args ...any) (pgconn.CommandTag, error) {
 	return session.db_conn.Exec(session.session_context, query, args)
 }
 
-func (session *db_session) Close() {
+func (session *Db_Session) Close() {
 	session.db_conn.Close()
 }
