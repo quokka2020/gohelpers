@@ -20,6 +20,7 @@ var broker = util.GetEnv("MQTT_BROKER", "tcp://192.168.10.4:1883")
 var password = util.GetEnv("MQTT_PASSWD", "")
 var user = util.GetEnv("MQTT_USER", "")
 var id = util.GetEnv("MQTT_ID", mqtt_id())
+var verbose = util.GetEnvBool("MQTT_VERBOSE", false)
 
 // When the cleanSession flag is set to true, the client explicitly requests a non-persistent session.
 var clean_session = util.GetEnvBool("MQTT_CLEAN", true)
@@ -82,22 +83,34 @@ func (helper *Mqtt_Helper) GetClient() MQTT.Client {
 
 func (helper *Mqtt_Helper) AddNumberSubscription(subtopic string, function func(string, float64)) {
 	helper.numberMapping[subtopic] = function
-	helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived)
+	token:=helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived)
+	if verbose && !token.WaitTimeout(time.Second) {
+		log.Printf("MQTT_HELPER AddNumberSubscription subtopic:%s err:%v",subtopic,token.Error())
+	}
 }
 
 func (helper *Mqtt_Helper) AddStringSubscription(subtopic string, function func(string, string)) {
 	helper.stringMapping[subtopic] = function
-	helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived)
+	token:=helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived)
+	if verbose && !token.WaitTimeout(time.Second) {
+		log.Printf("MQTT_HELPER AddStringSubscription subtopic:%s err:%v",subtopic,token.Error())
+	}
 }
 
 func (helper *Mqtt_Helper) AddNumberSubscriptionFull(topic string, function func(string, float64)) {
 	helper.numberMappingFull[topic] = function
-	helper.client.Subscribe(topic, byte(0), helper.numberReceivedFull)
+	token:=helper.client.Subscribe(topic, byte(0), helper.numberReceivedFull)
+	if verbose && !token.WaitTimeout(time.Second) {
+		log.Printf("MQTT_HELPER AddNumberSubscriptionFull subtopic:%s err:%v",topic,token.Error())
+	}
 }
 
 func (helper *Mqtt_Helper) AddStringSubscriptionFull(topic string, function func(string, string)) {
 	helper.stringMappingFull[topic] = function
-	helper.client.Subscribe(topic, byte(0), helper.stringReceivedFull)
+	token:=helper.client.Subscribe(topic, byte(0), helper.stringReceivedFull)
+	if verbose && !token.WaitTimeout(time.Second) {
+		log.Printf("MQTT_HELPER AddStringSubscriptionFull subtopic:%s err:%v",topic,token.Error())
+	}
 }
 
 func (helper *Mqtt_Helper) Close() {
@@ -117,26 +130,26 @@ func (helper *Mqtt_Helper) subtopic(topic string) string {
 }
 
 func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
-	log.Printf("Connected to %s", broker)
+	log.Printf("MQTT_HELPER Connected to %s", broker)
 	helper.PublishRetained("connected", "1")
 	for subtopic := range helper.numberMapping {
 		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
-			log.Printf("failed to subscribe to %s err: %v", subtopic, token.Error())
+			log.Printf("MQTT_HELPER failed to subscribe to %s err: %v", subtopic, token.Error())
 		}
 	}
 	for subtopic := range helper.stringMapping {
 		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived); token.Wait() && token.Error() != nil {
-			log.Printf("failed to subscribe to %s err: %v", subtopic, token.Error())
+			log.Printf("MQTT_HELPER failed to subscribe to %s err: %v", subtopic, token.Error())
 		}
 	}
 	for topic := range helper.numberMappingFull {
 		if token := helper.client.Subscribe(topic, byte(0), helper.numberReceivedFull); token.Wait() && token.Error() != nil {
-			log.Printf("failed to subscribe to %s err: %v", topic, token.Error())
+			log.Printf("MQTT_HELPER failed to subscribe to %s err: %v", topic, token.Error())
 		}
 	}
 	for topic := range helper.stringMappingFull {
 		if token := helper.client.Subscribe(topic, byte(0), helper.stringReceivedFull); token.Wait() && token.Error() != nil {
-			log.Printf("failed to subscribe to %s err: %v", topic, token.Error())
+			log.Printf("MQTT_HELPER failed to subscribe to %s err: %v", topic, token.Error())
 		}
 	}
 }
@@ -144,7 +157,7 @@ func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 func (helper *Mqtt_Helper) PublishFullRetained(topic, message string) {
 	token := helper.client.Publish(topic, byte(qos), true, message)
 	if !token.WaitTimeout(1 * time.Second) {
-		log.Printf("PublishRetained failed err:%v", token.Error())
+		log.Printf("MQTT_HELPER PublishRetained failed err:%v", token.Error())
 	}
 }
 
@@ -191,7 +204,7 @@ func ValueToMessage(value any) []byte {
 			message = "0"
 		}
 	default:
-		log.Printf("Type not implemented for topic %v", value)
+		log.Printf("MQTT_HELPER Type not implemented for topic %v", value)
 		message = fmt.Sprintf("%v", value)
 	}
 	return []byte(message)
@@ -200,11 +213,11 @@ func ValueToMessage(value any) []byte {
 func (helper *Mqtt_Helper) PublishFull(topic string, value any) {
 	message := ValueToMessage(value)
 	if util.Verbose() {
-		log.Printf("mqtt publish token:%s message:%s", topic, string(message))
+		log.Printf("MQTT_HELPER publish token:%s message:%s", topic, string(message))
 	}
 	token := helper.client.Publish(topic, byte(qos), false, message)
 	if !token.WaitTimeout(1 * time.Second) {
-		log.Printf("Publish failed err:%v", token.Error())
+		log.Printf("MQTT_HELPER Publish failed err:%v", token.Error())
 	}
 }
 
@@ -216,7 +229,7 @@ func (helper *Mqtt_Helper) PublishFullJson(topic string, payload any) {
 	message, _ := json.Marshal(payload)
 	token := helper.client.Publish(topic, byte(qos), false, string(message))
 	if !token.WaitTimeout(1 * time.Second) {
-		log.Printf("PublishJson failed err:%v", token.Error())
+		log.Printf("MQTT_HELPER PublishJson failed err:%v", token.Error())
 	}
 }
 
@@ -225,13 +238,13 @@ func (helper *Mqtt_Helper) PublishJson(subtopic string, payload any) {
 }
 
 func (helper *Mqtt_Helper) numberReceived(client MQTT.Client, msg MQTT.Message) {
-	// if *VERBOSE {
-	// 	log.Printf("MQTT Number received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
-	// }
+	if verbose {
+		log.Printf("MQTT_HELPER Number received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
+	}
 
 	i, err := strconv.ParseFloat(string(msg.Payload()), 64)
 	if err != nil {
-		log.Printf("Got a non-number from %s with payload [%s] %v", msg.Topic(), string(msg.Payload()), err)
+		log.Printf("MQTT_HELPER Got a non-number from %s with payload [%s] %v", msg.Topic(), string(msg.Payload()), err)
 		return
 	}
 	for subtopic, function := range helper.numberMapping {
@@ -240,30 +253,30 @@ func (helper *Mqtt_Helper) numberReceived(client MQTT.Client, msg MQTT.Message) 
 			return
 		}
 	}
-	log.Printf("Got an unmapped number from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
+	log.Printf("MQTT_HELPER Got an unmapped number from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
 }
 
 func (helper *Mqtt_Helper) stringReceived(client MQTT.Client, msg MQTT.Message) {
-	// if *VERBOSE {
-	// 	log.Printf("MQTT String received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
-	// }
+	if verbose {
+		log.Printf("MQTT_HELPER String received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
+	}
 	for subtopic, function := range helper.stringMapping {
 		if match(msg.Topic(), helper.topic(subtopic)) {
 			function(helper.subtopic(msg.Topic()), string(msg.Payload()))
 			return
 		}
 	}
-	log.Printf("Got an unmapped string from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
+	log.Printf("MQTT_HELPER Got an unmapped string from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
 }
 
 func (helper *Mqtt_Helper) numberReceivedFull(client MQTT.Client, msg MQTT.Message) {
-	// if *VERBOSE {
-	// 	log.Printf("MQTT Number received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
-	// }
+	if verbose {
+		log.Printf("MQTT_HELPER Number received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
+	}
 
 	i, err := strconv.ParseFloat(string(msg.Payload()), 64)
 	if err != nil {
-		log.Printf("Got a non-number from %s with payload [%s] %v", msg.Topic(), string(msg.Payload()), err)
+		log.Printf("MQTT_HELPER Got a non-number from %s with payload [%s] %v", msg.Topic(), string(msg.Payload()), err)
 		return
 	}
 	for topic, function := range helper.numberMappingFull {
@@ -272,20 +285,20 @@ func (helper *Mqtt_Helper) numberReceivedFull(client MQTT.Client, msg MQTT.Messa
 			return
 		}
 	}
-	log.Printf("Got an unmapped number from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
+	log.Printf("MQTT_HELPER Got an unmapped number from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
 }
 
 func (helper *Mqtt_Helper) stringReceivedFull(client MQTT.Client, msg MQTT.Message) {
-	// if *VERBOSE {
-	// 	log.Printf("MQTT String received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
-	// }
+	if verbose {
+		log.Printf("MQTT_HELPER String received %s with payload:[%s]", msg.Topic(), string(msg.Payload()))
+	}
 	for topic, function := range helper.stringMappingFull {
 		if match(msg.Topic(), topic) {
 			function(msg.Topic(), string(msg.Payload()))
 			return
 		}
 	}
-	log.Printf("Got an unmapped string from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
+	log.Printf("MQTT_HELPER Got an unmapped string from %s with payload [%s]", msg.Topic(), string(msg.Payload()))
 }
 
 func match(topic, full_possible_match string) bool {
