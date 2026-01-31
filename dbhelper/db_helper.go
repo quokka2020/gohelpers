@@ -67,7 +67,7 @@ func (session *Db_Session) Run(sql func(ctx context.Context, db *pgxpool.Pool) e
 }
 
 func (session *Db_Session) Exec(query string, args ...any) (pgconn.CommandTag, error) {
-	return session.db_conn.Exec(session.session_context, query, args)
+	return session.db_conn.Exec(session.session_context, query, args...)
 }
 
 func (session *Db_Session) Close() {
