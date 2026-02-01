@@ -33,23 +33,25 @@ func mqtt_id() string {
 }
 
 type Mqtt_Helper struct {
-	client            MQTT.Client
-	Prefix            string // also the name
-	onConnectHandlers []func(helper *Mqtt_Helper)
-	numberMapping     map[string]func(string, float64)
-	numberMappingFull map[string]func(string, float64)
-	stringMapping     map[string]func(string, string)
-	stringMappingFull map[string]func(string, string)
+	client               MQTT.Client
+	Prefix               string // also the name
+	onConnectHandlers    []func(helper *Mqtt_Helper)
+	onDisconnectHandlers []func()
+	numberMapping        map[string]func(string, float64)
+	numberMappingFull    map[string]func(string, float64)
+	stringMapping        map[string]func(string, string)
+	stringMappingFull    map[string]func(string, string)
 }
 
 func CreateMqttHelper(prefix string) *Mqtt_Helper {
 	helper := Mqtt_Helper{
-		Prefix:            prefix,
-		onConnectHandlers: make([]func(helper *Mqtt_Helper), 0),
-		numberMapping:     make(map[string]func(string, float64)),
-		numberMappingFull: make(map[string]func(string, float64)),
-		stringMapping:     make(map[string]func(string, string)),
-		stringMappingFull: make(map[string]func(string, string)),
+		Prefix:               prefix,
+		onConnectHandlers:    make([]func(helper *Mqtt_Helper), 0),
+		onDisconnectHandlers: make([]func(), 0),
+		numberMapping:        make(map[string]func(string, float64)),
+		numberMappingFull:    make(map[string]func(string, float64)),
+		stringMapping:        make(map[string]func(string, string)),
+		stringMappingFull:    make(map[string]func(string, string)),
 	}
 
 	opts := MQTT.NewClientOptions()
@@ -62,9 +64,7 @@ func CreateMqttHelper(prefix string) *Mqtt_Helper {
 	opts.SetConnectRetry(true)
 	opts.SetConnectTimeout(10 * time.Second)
 	opts.SetConnectRetryInterval(30 * time.Second)
-	opts.SetConnectionLostHandler(func(c MQTT.Client, err error) {
-		log.Printf("just lost mqtt connection err:%v", err)
-	})
+	opts.SetConnectionLostHandler(helper.onDisconnect)
 	opts.SetWill(
 		helper.topic("connected"),
 		"0",
@@ -87,33 +87,33 @@ func (helper *Mqtt_Helper) GetClient() MQTT.Client {
 
 func (helper *Mqtt_Helper) AddNumberSubscription(subtopic string, function func(string, float64)) {
 	helper.numberMapping[subtopic] = function
-	token:=helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived)
+	token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived)
 	if verbose && !token.WaitTimeout(time.Second) {
-		log.Printf("MQTT_HELPER AddNumberSubscription subtopic:%s err:%v",subtopic,token.Error())
+		log.Printf("MQTT_HELPER AddNumberSubscription subtopic:%s err:%v", subtopic, token.Error())
 	}
 }
 
 func (helper *Mqtt_Helper) AddStringSubscription(subtopic string, function func(string, string)) {
 	helper.stringMapping[subtopic] = function
-	token:=helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived)
+	token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.stringReceived)
 	if verbose && !token.WaitTimeout(time.Second) {
-		log.Printf("MQTT_HELPER AddStringSubscription subtopic:%s err:%v",subtopic,token.Error())
+		log.Printf("MQTT_HELPER AddStringSubscription subtopic:%s err:%v", subtopic, token.Error())
 	}
 }
 
 func (helper *Mqtt_Helper) AddNumberSubscriptionFull(topic string, function func(string, float64)) {
 	helper.numberMappingFull[topic] = function
-	token:=helper.client.Subscribe(topic, byte(0), helper.numberReceivedFull)
+	token := helper.client.Subscribe(topic, byte(0), helper.numberReceivedFull)
 	if verbose && !token.WaitTimeout(time.Second) {
-		log.Printf("MQTT_HELPER AddNumberSubscriptionFull subtopic:%s err:%v",topic,token.Error())
+		log.Printf("MQTT_HELPER AddNumberSubscriptionFull subtopic:%s err:%v", topic, token.Error())
 	}
 }
 
 func (helper *Mqtt_Helper) AddStringSubscriptionFull(topic string, function func(string, string)) {
 	helper.stringMappingFull[topic] = function
-	token:=helper.client.Subscribe(topic, byte(0), helper.stringReceivedFull)
+	token := helper.client.Subscribe(topic, byte(0), helper.stringReceivedFull)
 	if verbose && !token.WaitTimeout(time.Second) {
-		log.Printf("MQTT_HELPER AddStringSubscriptionFull subtopic:%s err:%v",topic,token.Error())
+		log.Printf("MQTT_HELPER AddStringSubscriptionFull subtopic:%s err:%v", topic, token.Error())
 	}
 }
 
@@ -156,8 +156,15 @@ func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 			log.Printf("MQTT_HELPER failed to subscribe to %s err: %v", topic, token.Error())
 		}
 	}
-	for _,onConnectHandler := range helper.onConnectHandlers {
+	for _, onConnectHandler := range helper.onConnectHandlers {
 		onConnectHandler(helper)
+	}
+}
+
+func (helper *Mqtt_Helper) onDisconnect(c MQTT.Client, err error) {
+	log.Printf("just lost mqtt connection err:%v", err)
+	for _, onDisconnectHandler := range helper.onDisconnectHandlers {
+		onDisconnectHandler()
 	}
 }
 
@@ -168,7 +175,19 @@ func (helper *Mqtt_Helper) RegisterOnConnectHandler(onConnectHandler func(*Mqtt_
 func (helper *Mqtt_Helper) UnregisterOnConnectHandler(toRemove func(*Mqtt_Helper)) {
 	helper.onConnectHandlers = slices.DeleteFunc(helper.onConnectHandlers, func(cur func(*Mqtt_Helper)) bool {
 		cur_val := reflect.ValueOf(cur)
-    	toRemove_val := reflect.ValueOf(toRemove)
+		toRemove_val := reflect.ValueOf(toRemove)
+		return cur_val == toRemove_val
+	})
+}
+
+func (helper *Mqtt_Helper) RegisterOnDisconnectHandler(onDisconnectHandler func()) {
+	helper.onDisconnectHandlers = append(helper.onDisconnectHandlers, onDisconnectHandler)
+}
+
+func (helper *Mqtt_Helper) UnregisterOnDisconnectHandler(toRemove func()) {
+	helper.onDisconnectHandlers = slices.DeleteFunc(helper.onDisconnectHandlers, func(cur func()) bool {
+		cur_val := reflect.ValueOf(cur)
+		toRemove_val := reflect.ValueOf(toRemove)
 		return cur_val == toRemove_val
 	})
 }
