@@ -20,11 +20,14 @@ func (avg *Float64_Avg) Add(val float64) {
 	avg.count++
 }
 
-func (avg *Float64_Avg) GetAndReset() float64 {
+func (avg *Float64_Avg) GetAndReset() *float64 {
+	if avg.count == 0 {
+		return nil
+	}
 	res := avg.total / float64(avg.count)
 	avg.total = 0
 	avg.count = 0
-	return res
+	return &res
 }
 
 func (avg *Float64_Avg_Sync) Add(val float64) {
@@ -34,25 +37,36 @@ func (avg *Float64_Avg_Sync) Add(val float64) {
 	avg.count++
 }
 
-func (avg *Float64_Avg_Sync) GetAndReset() float64 {
+func (avg *Float64_Avg_Sync) GetAndReset() *float64 {
 	avg.Lock()
 	defer avg.Unlock()
+	if avg.count == 0 {
+		return nil
+	}
 	res := avg.total / float64(avg.count)
 	avg.total = 0
 	avg.count = 0
-	return res
+	return &res
 }
 
 // Avg,Total,Count
-func (avg *Float64_Avg) Get() (float64, float64, int) {
-	return (avg.total / float64(avg.count)), avg.total, avg.count
+func (avg *Float64_Avg) Get() (*float64, float64, int) {
+	if avg.count == 0 {
+		return nil, 0,0
+	}
+	res := (avg.total / float64(avg.count))
+	return &res, avg.total, avg.count
 }
 
 // Avg,Total,Count
-func (avg *Float64_Avg_Sync) Get() (float64, float64, int) {
+func (avg *Float64_Avg_Sync) Get() (*float64, float64, int) {
 	avg.Lock()
 	defer avg.Unlock()
-	return (avg.total / float64(avg.count)), avg.total, avg.count
+	if avg.count == 0 {
+		return nil, 0,0
+	}
+	res := (avg.total / float64(avg.count))
+	return &res, avg.total, avg.count
 }
 
 func (avg *Float64_Avg) MarshalJSON() ([]byte, error) {

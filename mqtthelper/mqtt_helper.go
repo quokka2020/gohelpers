@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +35,7 @@ func mqtt_id() string {
 type Mqtt_Helper struct {
 	client            MQTT.Client
 	Prefix            string // also the name
+	onConnectHandlers []func(helper *Mqtt_Helper)
 	numberMapping     map[string]func(string, float64)
 	numberMappingFull map[string]func(string, float64)
 	stringMapping     map[string]func(string, string)
@@ -42,6 +45,7 @@ type Mqtt_Helper struct {
 func CreateMqttHelper(prefix string) *Mqtt_Helper {
 	helper := Mqtt_Helper{
 		Prefix:            prefix,
+		onConnectHandlers: make([]func(helper *Mqtt_Helper), 0),
 		numberMapping:     make(map[string]func(string, float64)),
 		numberMappingFull: make(map[string]func(string, float64)),
 		stringMapping:     make(map[string]func(string, string)),
@@ -152,6 +156,21 @@ func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 			log.Printf("MQTT_HELPER failed to subscribe to %s err: %v", topic, token.Error())
 		}
 	}
+	for _,onConnectHandler := range helper.onConnectHandlers {
+		onConnectHandler(helper)
+	}
+}
+
+func (helper *Mqtt_Helper) RegisterOnConnectHandler(onConnectHandler func(*Mqtt_Helper)) {
+	helper.onConnectHandlers = append(helper.onConnectHandlers, onConnectHandler)
+}
+
+func (helper *Mqtt_Helper) UnregisterOnConnectHandler(toRemove func(*Mqtt_Helper)) {
+	helper.onConnectHandlers = slices.DeleteFunc(helper.onConnectHandlers, func(cur func(*Mqtt_Helper)) bool {
+		cur_val := reflect.ValueOf(cur)
+    	toRemove_val := reflect.ValueOf(toRemove)
+		return cur_val == toRemove_val
+	})
 }
 
 func (helper *Mqtt_Helper) PublishFullRetained(topic, message string) {
