@@ -109,3 +109,27 @@ func GetEnvBool(key string, fallback bool) bool {
 	}
 	return fallback
 }
+
+// Get env var or default
+func GetEnvFloat32(key string, fallback float32) float32 {
+	value := GetEnv(key, "")
+	if value != "" {
+		i, err := strconv.ParseFloat(value, 32)
+		if err == nil {
+			return float32(i)
+		}
+	}
+	return fallback
+}
+
+// Get env var or default
+func GetEnvFloat64(key string, fallback float64) float64 {
+	value := GetEnv(key, "")
+	if value != "" {
+		i, err := strconv.ParseFloat(value, 64)
+		if err == nil {
+			return i
+		}
+	}
+	return fallback
+}

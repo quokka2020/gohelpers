@@ -1,6 +1,7 @@
 package util
 
 import (
+	"slices"
 	"errors"
 	"fmt"
 	"net"
@@ -20,12 +21,7 @@ func NotEmpty(s string) bool {
 }
 
 func Contains(s []string, str string) bool {
-	for /*nr*/ _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, str)
 }
 
 func FileExists(filename string) bool {
