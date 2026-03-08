@@ -18,14 +18,15 @@ import (
 )
 
 var qos = 0
-var broker = util.GetEnv("MQTT_BROKER", "tcp://192.168.10.4:1883")
-var password = util.GetEnv("MQTT_PASSWD", "")
-var user = util.GetEnv("MQTT_USER", "")
-var id = util.GetEnv("MQTT_ID", mqtt_id())
+var env_prefix = util.GetEnv("MQTT_PREFIX", filepath.Base(os.Args[0]))
+var env_broker = util.GetEnv("MQTT_BROKER", "tcp://192.168.10.4:1883")
+var env_password = util.GetEnv("MQTT_PASSWD", "")
+var env_user = util.GetEnv("MQTT_USER", "")
+var env_id = util.GetEnv("MQTT_ID", mqtt_id())
 var verbose = util.GetEnvBool("MQTT_VERBOSE", false)
 
 // When the cleanSession flag is set to true, the client explicitly requests a non-persistent session.
-var clean_session = util.GetEnvBool("MQTT_CLEAN", true)
+var env_clean_session = util.GetEnvBool("MQTT_CLEAN", true)
 
 func mqtt_id() string {
 	filename := filepath.Base(os.Args[0])
@@ -33,7 +34,10 @@ func mqtt_id() string {
 }
 
 type Mqtt_Helper struct {
-	client               MQTT.Client
+	client MQTT.Client
+	broker string
+	id     string
+
 	Prefix               string // also the name
 	onConnectHandlers    []func(helper *Mqtt_Helper)
 	onDisconnectHandlers []func()
@@ -43,9 +47,11 @@ type Mqtt_Helper struct {
 	stringMappingFull    map[string]func(string, string)
 }
 
-func CreateMqttHelper(prefix string) *Mqtt_Helper {
+func NewMqttHelper(broker, user, password, prefix, id string, clean_session *bool) *Mqtt_Helper {
 	helper := Mqtt_Helper{
 		Prefix:               prefix,
+		broker:               broker,
+		id:                   id,
 		onConnectHandlers:    make([]func(helper *Mqtt_Helper), 0),
 		onDisconnectHandlers: make([]func(), 0),
 		numberMapping:        make(map[string]func(string, float64)),
@@ -53,13 +59,20 @@ func CreateMqttHelper(prefix string) *Mqtt_Helper {
 		stringMapping:        make(map[string]func(string, string)),
 		stringMappingFull:    make(map[string]func(string, string)),
 	}
+	if id == "" {
+		helper.id = env_id
+	}
 
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker(broker)
-	opts.SetClientID(id)
-	opts.SetUsername(user)
-	opts.SetPassword(password)
-	opts.SetCleanSession(clean_session)
+	opts.AddBroker(helper.broker)
+	opts.SetClientID(helper.id)
+	opts.SetUsername(env_user)
+	opts.SetPassword(env_password)
+	if clean_session != nil {
+		opts.SetCleanSession(*clean_session)
+	} else {
+		opts.SetCleanSession(env_clean_session)
+	}
 	opts.SetAutoReconnect(true)
 	opts.SetConnectRetry(true)
 	opts.SetConnectTimeout(10 * time.Second)
@@ -80,6 +93,15 @@ func CreateMqttHelper(prefix string) *Mqtt_Helper {
 
 	return &helper
 }
+
+func CreateMqttHelper(prefix string) *Mqtt_Helper {
+	return NewMqttHelper(env_broker,env_user,env_password,env_prefix,env_id, nil)
+}
+
+func CreateMqttHelperFromEnv() *Mqtt_Helper {
+	return CreateMqttHelper(env_prefix)
+}
+
 
 func (helper *Mqtt_Helper) GetClient() MQTT.Client {
 	return helper.client
@@ -134,7 +156,7 @@ func (helper *Mqtt_Helper) subtopic(topic string) string {
 }
 
 func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
-	log.Printf("MQTT_HELPER Connected to %s", broker)
+	log.Printf("MQTT_HELPER Connected to %s", helper.broker)
 	helper.PublishRetained("connected", "1")
 	for subtopic := range helper.numberMapping {
 		if token := helper.client.Subscribe(helper.topic(subtopic), byte(0), helper.numberReceived); token.Wait() && token.Error() != nil {
