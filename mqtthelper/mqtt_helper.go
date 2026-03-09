@@ -67,8 +67,8 @@ func NewMqttHelper(broker, user, password, prefix, id string, clean_session *boo
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(helper.broker)
 	opts.SetClientID(helper.id)
-	opts.SetUsername(env_user)
-	opts.SetPassword(env_password)
+	opts.SetUsername(user)
+	opts.SetPassword(password)
 	if clean_session != nil {
 		opts.SetCleanSession(*clean_session)
 	} else {
