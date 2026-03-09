@@ -34,9 +34,10 @@ func mqtt_id() string {
 }
 
 type Mqtt_Helper struct {
-	client MQTT.Client
-	broker string
-	id     string
+	client            MQTT.Client
+	broker            string
+	id                string
+	connection_status MQTT.ConnectionNotificationType
 
 	Prefix               string // also the name
 	onConnectHandlers    []func(helper *Mqtt_Helper)
@@ -85,6 +86,7 @@ func NewMqttHelper(broker, user, password, prefix, id string, clean_session *boo
 		true,
 	)
 	opts.SetOnConnectHandler(helper.onConnect)
+	opts.SetConnectionNotificationHandler(helper.onConnectionNotificationHandler)
 
 	// opts.SetDefaultPublishHandler(data.msgReceived)
 
@@ -95,13 +97,12 @@ func NewMqttHelper(broker, user, password, prefix, id string, clean_session *boo
 }
 
 func CreateMqttHelper(prefix string) *Mqtt_Helper {
-	return NewMqttHelper(env_broker,env_user,env_password,env_prefix,env_id, nil)
+	return NewMqttHelper(env_broker, env_user, env_password, env_prefix, env_id, nil)
 }
 
 func CreateMqttHelperFromEnv() *Mqtt_Helper {
 	return CreateMqttHelper(env_prefix)
 }
-
 
 func (helper *Mqtt_Helper) GetClient() MQTT.Client {
 	return helper.client
@@ -184,9 +185,31 @@ func (helper *Mqtt_Helper) onConnect(client MQTT.Client) {
 }
 
 func (helper *Mqtt_Helper) onDisconnect(c MQTT.Client, err error) {
-	log.Printf("just lost mqtt connection err:%v", err)
+	log.Printf("MQTT_HELPER just lost mqtt connection err:%v", err)
 	for _, onDisconnectHandler := range helper.onDisconnectHandlers {
 		onDisconnectHandler()
+	}
+}
+
+func (helper *Mqtt_Helper) onConnectionNotificationHandler(client MQTT.Client, con_not MQTT.ConnectionNotification) {
+	if helper.connection_status == con_not.Type() {
+		return
+	}
+	switch con_not.Type() {
+	case MQTT.ConnectionNotificationTypeConnected:
+		log.Printf("MQTT_HELPER got mqtt connection connected [%v]",con_not)
+	case MQTT.ConnectionNotificationTypeConnecting:
+		log.Printf("MQTT_HELPER got mqtt connection connecting [%v]",con_not)
+	case MQTT.ConnectionNotificationTypeFailed:
+		log.Printf("MQTT_HELPER got mqtt connection failed [%v]",con_not)
+	case MQTT.ConnectionNotificationTypeLost:
+		log.Printf("MQTT_HELPER got mqtt connection failed [%v]",con_not)
+	case MQTT.ConnectionNotificationTypeBroker:
+		log.Printf("MQTT_HELPER got mqtt connection broker [%v]",con_not)
+	case MQTT.ConnectionNotificationTypeBrokerFailed:
+		log.Printf("MQTT_HELPER got mqtt connection broker failed [%v]",con_not)
+	default:
+		log.Printf("MQTT_HELPER unhandled connection notification [%v]", con_not)
 	}
 }
 
@@ -272,7 +295,7 @@ func ValueToMessage(value any) []byte {
 
 func (helper *Mqtt_Helper) PublishFull(topic string, value any) {
 	message := ValueToMessage(value)
-	if util.Verbose() {
+	if verbose {
 		log.Printf("MQTT_HELPER publish token:%s message:%s", topic, string(message))
 	}
 	token := helper.client.Publish(topic, byte(qos), false, message)
