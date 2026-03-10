@@ -101,6 +101,31 @@ func GetEnvInt(key string, fallback int) int {
 	return fallback
 }
 
+
+// Get env var or default
+func GetEnvInt64(key string, fallback int64) int64 {
+	value := GetEnv(key, "")
+	if value != "" {
+		i, err := strconv.ParseInt(value,10,64)
+		if err == nil {
+			return i
+		}
+	}
+	return fallback
+}
+
+// Get env var or default
+func GetEnvUint64(key string, fallback uint64) uint64 {
+	value := GetEnv(key, "")
+	if value != "" {
+		i, err := strconv.ParseUint(value,10,64)
+		if err == nil {
+			return i
+		}
+	}
+	return fallback
+}
+
 // Get env var or default
 func GetEnvBool(key string, fallback bool) bool {
 	value := GetEnv(key, "")
