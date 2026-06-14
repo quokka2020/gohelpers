@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quokka2020/gohelpers/util"
 )
 
@@ -37,7 +37,7 @@ func (helper *Db_Helper) CreateSession(ctx context.Context) (*Db_Session, error)
 	session := Db_Session{
 		session_context: ctx,
 	}
-	session.db_conn, err = pgxpool.ConnectConfig(ctx, helper.pool_config)
+	session.db_conn, err = pgxpool.NewWithConfig(ctx, helper.pool_config)
 	if err != nil {
 		log.Printf("Unable to create connection pool %v", err)
 		return nil, fmt.Errorf("unable to create connection pool %v", err)

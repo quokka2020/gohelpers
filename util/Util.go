@@ -65,11 +65,7 @@ func UriToHostPort(in string) (HostPort, error) {
 		return ToHostPort(url.Host)
 	}
 	switch url.Scheme {
-	case "http": return HostPort{
-		Host: url.Host,
-		Port: 80,
-	},nil
-	case "ws": return HostPort{
+	case "http","ws": return HostPort{
 		Host: url.Host,
 		Port: 80,
 	},nil
